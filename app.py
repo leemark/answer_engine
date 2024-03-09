@@ -18,10 +18,7 @@ from langchain_groq import ChatGroq
 # create an instance of ChatGroq
 chat = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768")
 # create an instance of ChatPromptTemplate
-system = """You are a rephraser and always respond ONLY with a rephrased version of the userinput 
-            that will given to a search engine API. Always be succint and use the same words 
-            as the input.  ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT.
-            """
+system = "You are a helpful search query builder assistant and always respond ONLY with a reworded version of the user input that should be given to a search engine API. Always be succint and use the same words as the input.  ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT."
 human = "{text}"
 prompt = ChatPromptTemplate.from_messages([("system", system), ("human", human)])
 
