@@ -1,4 +1,4 @@
-
+import os
 # Import the dotenv module to load environment variables from a .env file
 from dotenv import load_dotenv
 # Load environment variables
@@ -23,6 +23,13 @@ human = "INPUT TO REPHRASE:{text}"
 prompt = ChatPromptTemplate.from_messages([("system", system), ("human", human)])
 
 chain = prompt | chat
-response = chain.invoke({"text": "Write a story about the moon."})
+rephrased_query = chain.invoke({"text": "What is the latest news in AI?"})
 
-print(response)
+print(rephrased_query)
+
+from langchain_community.tools import BraveSearch
+tool = BraveSearch.from_api_key(api_key= os.environ["BRAVE_API_KEY"], search_kwargs={"count": 3})
+
+docs = tool.run(rephrased_query.content)
+
+print(docs)
