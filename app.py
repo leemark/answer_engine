@@ -29,13 +29,20 @@ rephrased_query = rephrased_query.content
 
 # remove any leading or trailing quotes from the rephrased query
 rephrased_query = rephrased_query.strip('"')
-#remove and parenthetical remarks from the rephrased query
+# remove any parenthetical remarks from the rephrased query
 rephrased_query = rephrased_query.split("(")[0]
 
-print(rephrased_query)
-
+# https://python.langchain.com/docs/integrations/tools/brave_search
+# import BraveSearch and query the brave search api
 from langchain_community.tools import BraveSearch
-tool = BraveSearch.from_api_key(api_key= os.environ["BRAVE_API_KEY"], search_kwargs={"count": 5})
+tool = BraveSearch.from_api_key(api_key= os.environ["BRAVE_API_KEY"])
 docs = tool.run(rephrased_query)
 
-print(docs)
+# convert docs to json
+import json
+docs_list = json.loads(docs)
+
+#for each doc in docs_list print the link
+for doc in docs_list:
+    url = doc["link"]
+    print(url)
