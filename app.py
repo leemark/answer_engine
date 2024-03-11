@@ -1,48 +1,62 @@
 import os
-# Import the dotenv module to load environment variables from a .env file
+import json
 from dotenv import load_dotenv
+from langchain_openai import OpenAIEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
+from langchain_community.tools import BraveSearch
+from langchain_community.document_loaders import WebBaseLoader
+from bs4 import BeautifulSoup
+
 # Load environment variables
 load_dotenv()
 
-# https://python.langchain.com/docs/integrations/text_embedding/openai
-# import OpenAIEmbeddings to embed text
-from langchain_openai import OpenAIEmbeddings
-# create an instance of OpenAIEmbeddings  
-embed_model = OpenAIEmbeddings(model="text-embedding-3-small")
+# Constants
+SYSTEM_PROMPT = "You are a helpful search query builder assistant and always respond ONLY with a reworded version of the user input that should be given to a search engine API. Always be succint and use the same words as the input. ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT OR COMMENTARY"
+HUMAN_PROMPT = "INPUT TO REPHRASE:{text}"
 
-# https://python.langchain.com/docs/integrations/chat/groq
-# import ChatGroq and ChatPromptTemplate
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
+def create_chat_pipeline():
+    chat = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768")
+    prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT), ("human", HUMAN_PROMPT)])
+    return prompt | chat
 
-# create an instance of ChatGroq
-chat = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768")
-# create an instance of ChatPromptTemplate
-system = "You are a helpful search query builder assistant and always respond ONLY with a reworded version of the user input that should be given to a search engine API. Always be succint and use the same words as the input.  ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT OR COMMENTARY"
-human = "INPUT TO REPHRASE:{text}"
-prompt = ChatPromptTemplate.from_messages([("system", system), ("human", human)])
+def rephrase_query(chat_pipeline, text):
+    rephrased_query = chat_pipeline.invoke({"text": text}).content
+    rephrased_query = rephrased_query.strip('"').split("(")[0]
+    return rephrased_query
 
-chain = prompt | chat
+def search_urls(api_key, rephrased_query):
+    tool = BraveSearch.from_api_key(api_key)
+    docs = tool.run(rephrased_query)
+    docs_list = json.loads(docs)
+    urls = [doc["link"] for doc in docs_list]
+    return urls
 
-rephrased_query = chain.invoke({"text": "What is the latest news in cancer treatments?"})
-rephrased_query = rephrased_query.content
+def scrape_and_parse(urls):
+    contents = []
+    for url in urls:
+        loader = WebBaseLoader(url)
+        document_list = loader.load() 
+        for document in document_list:
+            soup = BeautifulSoup(document.page_content, 'html.parser')
+            text_contents = soup.get_text()
+            contents.append(text_contents)
+    return contents
 
-# remove any leading or trailing quotes from the rephrased query
-rephrased_query = rephrased_query.strip('"')
-# remove any parenthetical remarks from the rephrased query
-rephrased_query = rephrased_query.split("(")[0]
 
-# https://python.langchain.com/docs/integrations/tools/brave_search
-# import BraveSearch and query the brave search api
-from langchain_community.tools import BraveSearch
-tool = BraveSearch.from_api_key(api_key= os.environ["BRAVE_API_KEY"])
-docs = tool.run(rephrased_query)
+def main():
+    chat_pipeline = create_chat_pipeline()
+    input_text = "What is the latest news in cancer treatments?"
+    rephrased_query = rephrase_query(chat_pipeline, input_text)
+    
+    # Search URLs
+    urls = search_urls(os.environ["BRAVE_API_KEY"], rephrased_query)
+    
+    # Scrape and parse contents
+    page_contents = scrape_and_parse(urls)
+    print(page_contents)  # Or process as needed
+    
+    # TODO: Load contents into vector DB using chroma
 
-# convert docs to json
-import json
-docs_list = json.loads(docs)
-
-#for each doc in docs_list print the link
-for doc in docs_list:
-    url = doc["link"]
-    print(url)
+if __name__ == '__main__':
+    main()
