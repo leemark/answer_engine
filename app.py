@@ -43,6 +43,36 @@ def scrape_and_parse(urls):
             contents.append(text_contents)
     return contents
 
+import os
+import chromadb
+from langchain_openai import OpenAIEmbeddings
+import uuid
+
+# Function to embed contents into a Chroma vector database
+import chromadb
+from langchain_openai import OpenAIEmbeddings
+import uuid
+
+# Function to embed contents into a Chroma vector database
+def embed_into_chroma_db(contents, collection_name):
+    # Create the OpenAI Embedding function
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+    # Initialize Chroma's persistent client and create/get a collection
+    persistent_client = chromadb.PersistentClient()
+    collection = persistent_client.get_or_create_collection(collection_name)
+    
+    # Iterate over the contents and add them to the database
+    for content in contents:
+        # Generate a unique ID for each content
+        doc_id = str(uuid.uuid4())
+        # Add the document to the Chroma collection
+        collection.add(ids=[doc_id], documents=[content])
+
+    print(f"Successfully embedded {len(contents)} documents into the Chroma DB in collection '{collection_name}'")
+
+
+
 
 def main():
     chat_pipeline = create_chat_pipeline()
@@ -56,7 +86,8 @@ def main():
     page_contents = scrape_and_parse(urls)
     print(page_contents)  # Or process as needed
     
-    # TODO: Load contents into vector DB using chroma
+    # Load contents into vector DB using chroma
+    embed_into_chroma_db(page_contents, collection_name="my_collection")
 
 if __name__ == '__main__':
     main()
