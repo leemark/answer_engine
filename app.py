@@ -88,7 +88,7 @@ def query_chroma_db(query, collection_name, top_k=5):
 
 def generate_llm_response(relevant_docs, relevant_sources, query):
     context = "\n".join([f"Source: {source}\nContent: {doc}" for doc, source in zip(relevant_docs, relevant_sources)])
-    llm = ChatGroq(temperature=0.5, model_name=MODEL_NAME)
+    llm = ChatGroq(temperature=0.3, model_name=MODEL_NAME)
     response = llm.invoke(f"Context:\n{context}\n\nQuery: {query}")
     return response
 
@@ -105,6 +105,11 @@ def main():
     relevant_docs, relevant_sources = query_chroma_db(rephrased_query, collection_name="chroma_collection")
 
     llm_response = generate_llm_response(relevant_docs, relevant_sources, rephrased_query)
+
+    #TODO perform reflection, asking LLM if this was a good answer to the USER_PROMPT, if not then rephrase query as needed and do generate_llm_response() a second time
+
+    #TODO ask LLM to generate 3 possible followup questions based on the USER_PROMPT and the LLM response
+
 
     print("LLM Response:")
     print(llm_response)
