@@ -12,12 +12,14 @@ from bs4 import BeautifulSoup
 load_dotenv()
 
 # Constants
-SYSTEM_PROMPT = "You are a helpful search query builder assistant and always respond ONLY with a reworded version of the user input that should be given to a search engine API. Always be succint and use the same words as the input. ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT OR COMMENTARY"
-HUMAN_PROMPT = "INPUT TO REPHRASE:{text}"
+MODEL_NAME = "mixtral-8x7b-32768"
+USER_PROMPT = "What is the latest news in AI drug discovery?"
+SYSTEM_REPHRASE_PROMPT = "You are a helpful search query builder assistant and always respond ONLY with a reworded version of the user input that should be given to a search engine API. Always be succint and use the same words as the input. ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT OR COMMENTARY"
+HUMAN_REPHRASE_PROMPT = "INPUT TO REPHRASE:{text}"
 
 def create_chat_pipeline():
-    chat = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768")
-    prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT), ("human", HUMAN_PROMPT)])
+    chat = ChatGroq(temperature=0, model_name=MODEL_NAME)
+    prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_REPHRASE_PROMPT), ("human", HUMAN_REPHRASE_PROMPT)])
     return prompt | chat
 
 def rephrase_query(chat_pipeline, text):
@@ -76,7 +78,7 @@ def embed_into_chroma_db(contents, collection_name):
 
 def main():
     chat_pipeline = create_chat_pipeline()
-    input_text = "What is the latest news in cancer treatments?"
+    input_text = USER_PROMPT
     rephrased_query = rephrase_query(chat_pipeline, input_text)
     
     # Search URLs
