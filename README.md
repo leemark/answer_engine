@@ -6,7 +6,5 @@ uses openai embeddings, brave for search, and groq + mixtral for inference
 ## How to install 
 pip install -r requirements.txt
 
-## IMPORTANT
-not working yet ;)
 
 
