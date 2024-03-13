@@ -16,9 +16,11 @@ load_dotenv()
 
 # Constants
 MODEL_NAME = "mixtral-8x7b-32768"
-USER_PROMPT = "What are the latest advancements in electric cars?"
+USER_PROMPT = "What are the latest advancements in machine learning?"
 SYSTEM_REPHRASE_PROMPT = "You are a helpful search query builder assistant and always respond ONLY with a reworded version of the user input that should be given to a search engine API. Always be succint and use the same words as the input. ONLY RETURN THE REPHRASED VERSION OF THE USER INPUT WITH NO OTHER TEXT OR COMMENTARY"
 HUMAN_REPHRASE_PROMPT = "INPUT TO REPHRASE:{text}"
+
+llm = ChatGroq(temperature=0.3, model_name=MODEL_NAME)
 
 def create_chat_pipeline():
     chat = ChatGroq(temperature=0, model_name=MODEL_NAME)
@@ -88,9 +90,26 @@ def query_chroma_db(query, collection_name, top_k=5):
 
 def generate_llm_response(relevant_docs, relevant_sources, query):
     context = "\n".join([f"Source: {source}\nContent: {doc}" for doc, source in zip(relevant_docs, relevant_sources)])
-    llm = ChatGroq(temperature=0.3, model_name=MODEL_NAME)
     response = llm.invoke(f"Context:\n{context}\n\nQuery: {query}")
     return response
+
+def reflect_on_response(llm_response, user_prompt):
+    reflection_prompt = f"Given the user prompt: '{user_prompt}', is the following response a good answer?\n\nResponse: {llm_response}\n\nPlease provide a 'yes' or 'no' answer, followed by a brief explanation."
+    reflection = llm.invoke(reflection_prompt)
+    
+    
+    if "no" in reflection.content.lower():
+        rephrase_prompt = f"The previous response was not satisfactory. Please rephrase the query '{rephrased_query}' to better address the user prompt: '{user_prompt}'"
+        rephrased_query = llm.invoke(rephrase_prompt)
+        relevant_docs, relevant_sources = query_chroma_db(rephrased_query, collection_name="chroma_collection")
+        llm_response = generate_llm_response(relevant_docs, relevant_sources, rephrased_query)
+    
+    return llm_response
+
+def generate_followup_questions(llm_response, user_prompt):
+    followup_prompt = f"Based on the user prompt: '{user_prompt}' and the LLM response:\n\n{llm_response}\n\nPlease generate 3 relevant followup questions that the user might ask to further explore the topic."
+    followup_questions = llm.invoke(followup_prompt)
+    return followup_questions
 
 def main():
     chat_pipeline = create_chat_pipeline()
@@ -105,15 +124,16 @@ def main():
     relevant_docs, relevant_sources = query_chroma_db(rephrased_query, collection_name="chroma_collection")
 
     llm_response = generate_llm_response(relevant_docs, relevant_sources, rephrased_query)
-
-    #TODO perform reflection, asking LLM if this was a good answer to the USER_PROMPT, if not then rephrase query as needed and do generate_llm_response() a second time
-
-    #TODO ask LLM to generate 3 possible followup questions based on the USER_PROMPT and the LLM response
-
-
+    
+    llm_response = reflect_on_response(llm_response, USER_PROMPT)
+    followup_questions = generate_followup_questions(llm_response, USER_PROMPT)
+    
     print("LLM Response:")
     print(llm_response)
     print("Relevant Sources:")
     print(relevant_sources)
+    print("Followup Questions:")
+    print(followup_questions)
+
 if __name__ == '__main__':
     main()
